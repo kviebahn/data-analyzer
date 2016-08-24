@@ -40,7 +40,7 @@ class Listener(Subscriber):
         self.subscribe('iterationStatus')
         self.subscribe('Status')
         self._queue = queue
-        print('listening for events')
+        print('analyzer: listening for events')
 
     def event(self, event):
         # ignore all timing events, they will just flood the queue
@@ -133,11 +133,13 @@ def save_plot(name):
 
 def analyze(figure, file):
     # analyze the data and return one or multiple datapoints
-    print('hello')
+    # the figure that is passed here is for the current run
+    # the file that is passed is the hdf5 data file.
+    print(file.filename)
     return 1
 
 def plot(fig, data):
-    # do something with the data we have so far. Data is a 2D numpy array
+    # do something with the cummulative data we have so far. Data is a 2D numpy array
     # with data[0] == x, data[1] == y1 , etc.
     pass
 

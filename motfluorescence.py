@@ -15,6 +15,10 @@ def saturated_exponential(x, a, tau, x0):
     return a*(1.-np.exp(-(x-x0)/tau))
 
 def analyze(figure, file):
+    '''
+    The figure instance that is passed here is the plot of the current run.
+    The file is the current hdf5.
+    '''
 
     # time vs red fibre cluster photodiode
     xx = np.array(file['system.soft.visa.scope/red fibre cluster photodiode/x'])
