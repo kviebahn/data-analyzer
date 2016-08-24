@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+'''This script offers subscribing/listening functionality but it already also includes some plotting. The method 'analyze' should be overriden by the user.'''
+
 
 import socket
 from Pyro.EventService.Clients import Subscriber
@@ -9,6 +11,7 @@ import numpy as np
 import Queue
 from threading import Thread
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 
 # enable interactive plots
 plt.ion()
@@ -25,6 +28,7 @@ def getHostIP():
         print "failed to get ip by connecting to external server. using %s"%myip
     return myip
 
+# Set up ethernet connection between this script and the timing PC
 Pyro.config.PYRO_HOST = getHostIP()
 Pyro.config.PYRO_NS_HOSTNAME = '172.31.10.10'
 Pyro.core.initClient()
@@ -64,7 +68,7 @@ class Analyzer():
                 e = self._queue.get_nowait()
                 self.event(e)
             except Queue.Empty:
-                plt.pause(0.01)
+                plt.pause(0.001)
 
     def _full_analyze(self, f):
         # get iterator if in looped mode
@@ -75,43 +79,61 @@ class Analyzer():
             x = self._counter
             self._counter += 1
 
-        return (x,) + self._analyze(f)
+        return (x,) + self._analyze(self._fig, f)
+
+    def cleardata(self,event):
+        self._data = []
+        self._counter = 0
 
     def event(self, event):
-        if event.subject == 'hdfDone':
-            datapath = os.path.normpath(os.path.join(*event.msg[0]))
-            with h5py.File(datapath, 'r') as f:
-                data = np.array([self._full_analyze(f)]).T
-                if self._data == []:
-                    self._data = data
-                else:
-                    self._data = np.concatenate((self._data, data), axis=1)
-
-                if self._plot:
+        try:
+            if event.subject == 'hdfDone':
+                datapath = os.path.normpath(os.path.join(*event.msg[0]))
+                with h5py.File(datapath, 'r') as f:
+                    #clear figure before each data point arrives
                     self._fig.clear()
-                    self._plot(self._fig, self._data)
+                    plt.subplots_adjust(bottom=0.15)
 
-                if self._iterationDone:
-                    if self._save:
-                        self._save(self._data, self._folder)
-                    self._iterationDone = False
-                    self._data = []
+                    # get the (new) data
+                    data = np.array([self._full_analyze(f)]).T
+                    if self._data == []:
+                        self._data = data
+                    else:
+                        self._data = np.concatenate((self._data, data), axis=1)
 
-        elif event.subject == 'iterationStatus':
-            if event.msg[0]['status'] == 'started':
-                self._folder = os.path.normpath(event.msg[0]['folder'])
-            if event.msg[0]['status'] == 'stopped':
-                self._iterationDone = True
-        else:
-            if event.msg[0][0] == 'processStarted':
-                self._data = []
-                self._counter = 0
+                    if self._plot:
+                        self._plot(self._fig, self._data)
+
+                        # if not in looped mode, clear data of single shots
+                        
+                        buttonax = plt.axes([0.88, 0.01, 0.1, 0.075])
+                        self.mybutton = Button(buttonax, 'Clear')
+                        self.mybutton.on_clicked(self.cleardata)
+
+                    if self._iterationDone:
+                        if self._save:
+                            self._save(self._data, self._folder)
+                        self._iterationDone = False
+                        self._data = []
+
+            elif event.subject == 'iterationStatus':
+                if event.msg[0]['status'] == 'started':
+                    self._folder = os.path.normpath(event.msg[0]['folder'])
+                if event.msg[0]['status'] == 'stopped':
+                    self._iterationDone = True
+        except Exception as e:
+            print(e)
+        #else:
+        #    if event.msg[0][0] == 'processStarted':
+        #        self._data = []
+        #        self._counter = 0
 
 def save_plot(name):
     return lambda data,folder: plt.savefig(os.path.join(folder, name))
 
-def analyze(file):
+def analyze(figure, file):
     # analyze the data and return one or multiple datapoints
+    print('hello')
     return 1
 
 def plot(fig, data):

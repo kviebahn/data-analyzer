@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+'''This script offers basic 'listening' functionality for the Event 'hdfDon' which occurs at the end of each sequence run.
+The method 'analyze' is overriden by the user, eg. in analyzer.py'''
 
 import socket
 from Pyro.EventService.Clients import Subscriber
@@ -26,10 +28,16 @@ class Listener(Subscriber):
     def __init__(self, function):
         Subscriber.__init__(self)
         self.subscribe('hdfDone')
+        #self.subscribe('Status')
         self._function = function
         print('listening for events')
 
     def event(self, event):
+        if event.msg[0][0] == 'Time':
+            return
+        print(event.subject)
+        print(event.msg)
+        return
         datapath = os.path.normpath(os.path.join(*event.msg[0]))
         with h5py.File(datapath, 'r') as f:
             self._function(f, datapath)
